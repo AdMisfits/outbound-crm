@@ -1,5 +1,8 @@
 import Nav from "./nav";
-import type { DashboardData } from "@/lib/types";
+import { sql } from "@/lib/db";
+import type { Prospect } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
 
 const TIER_LABELS: Record<string, string> = {
   "70_30": "70/30 Partnership",
@@ -23,16 +26,32 @@ const STATUS_COLORS: Record<string, string> = {
   declined: "bg-red-500/20 text-red-400",
 };
 
-async function getDashboard(): Promise<DashboardData | null> {
+async function getDashboard() {
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/dashboard`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    return res.json();
+    const [prospects, trends, gaps, tierBreakdown, outreachBreakdown, recentProspects] =
+      await Promise.all([
+        sql`SELECT COUNT(*) as count FROM prospects`,
+        sql`SELECT COUNT(*) as count FROM trend_theses WHERE status = 'active'`,
+        sql`SELECT COUNT(*) as count FROM gap_opportunities`,
+        sql`SELECT tier, COUNT(*) as count FROM prospects GROUP BY tier`,
+        sql`SELECT outreach_status, COUNT(*) as count FROM prospects GROUP BY outreach_status`,
+        sql`SELECT * FROM prospects ORDER BY created_at DESC LIMIT 5`,
+      ]);
+
+    return {
+      total_prospects: parseInt(prospects.rows[0].count as string),
+      active_trends: parseInt(trends.rows[0].count as string),
+      total_gaps: parseInt(gaps.rows[0].count as string),
+      tier_breakdown: tierBreakdown.rows.reduce((acc, row) => {
+        acc[row.tier as string] = parseInt(row.count as string);
+        return acc;
+      }, {} as Record<string, number>),
+      outreach_breakdown: outreachBreakdown.rows.reduce((acc, row) => {
+        acc[row.outreach_status as string] = parseInt(row.count as string);
+        return acc;
+      }, {} as Record<string, number>),
+      recent_prospects: recentProspects.rows as unknown as Prospect[],
+    };
   } catch {
     return null;
   }

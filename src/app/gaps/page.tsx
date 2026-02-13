@@ -1,5 +1,8 @@
 import Nav from "../nav";
+import { sql } from "@/lib/db";
 import type { GapOpportunity } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
 
 const STATUS_COLORS: Record<string, string> = {
   identified: "bg-blue-500/20 text-blue-400",
@@ -10,12 +13,13 @@ const STATUS_COLORS: Record<string, string> = {
 
 async function getGaps(): Promise<GapOpportunity[]> {
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/gaps`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return res.json();
+    const result = await sql`
+      SELECT g.*, t.trend_name
+      FROM gap_opportunities g
+      LEFT JOIN trend_theses t ON g.trend_thesis_id = t.id
+      ORDER BY g.created_at DESC
+    `;
+    return result.rows as unknown as GapOpportunity[];
   } catch {
     return [];
   }

@@ -1,5 +1,8 @@
 import Nav from "../nav";
+import { sql } from "@/lib/db";
 import type { TrendThesis } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-500/20 text-emerald-400",
@@ -9,12 +12,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 async function getTrends(): Promise<TrendThesis[]> {
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/trends`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return res.json();
+    const result = await sql`SELECT * FROM trend_theses ORDER BY created_at DESC`;
+    return result.rows as unknown as TrendThesis[];
   } catch {
     return [];
   }

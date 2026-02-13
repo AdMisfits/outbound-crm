@@ -1,5 +1,8 @@
 import Nav from "../nav";
+import { sql } from "@/lib/db";
 import type { Prospect } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
 
 const TIER_LABELS: Record<string, string> = {
   "70_30": "70/30",
@@ -50,12 +53,8 @@ function ScoreBar({ score, label }: { score: number | null; label: string }) {
 
 async function getProspects(): Promise<Prospect[]> {
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/prospects`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return res.json();
+    const result = await sql`SELECT * FROM prospects ORDER BY created_at DESC`;
+    return result.rows as unknown as Prospect[];
   } catch {
     return [];
   }
